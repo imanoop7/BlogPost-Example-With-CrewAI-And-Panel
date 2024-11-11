@@ -1,12 +1,13 @@
 import panel as pn
 from crewai import Crew, Process, Agent, Task
-from langchain_ollama import ChatOllama
+from langchain_ollama import OllamaLLM, ChatOllama
 from langchain_core.callbacks import BaseCallbackHandler
-from crewai.agents import CrewAgentExecutor
+from crewai.agents.crew_agent_executor import CrewAgentExecutor
 from typing import Any, Dict
 import threading
 import time
 from dotenv import load_dotenv
+from langchain.chat_models import ChatOpenAI
 
 # Load environment variables
 load_dotenv()
@@ -20,8 +21,12 @@ avatars = {
     "Reviewer": "https://cdn-icons-png.freepik.com/512/9408/9408201.png"
 }
 
-# Initialize LLM with TinyLlama
-llm = ChatOllama(model="tinyllama")
+# Initialize LLM - Fix the model configuration
+llm = ChatOpenAI(
+    model="ollama/tinyllama",  # Specify ollama as provider
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"
+)
 
 # Custom callback handler for agents
 class MyCustomHandler(BaseCallbackHandler):
@@ -37,27 +42,21 @@ class MyCustomHandler(BaseCallbackHandler):
         chat_interface.send(outputs['output'], user=self.agent_name, 
                           avatar=avatars[self.agent_name], respond=False)
 
-# Create agents
+# Create agents with the properly configured LLM
 writer = Agent(
     role='Blog Post Writer',
-    backstory='''You are a blog post writer who is capable of writing a travel blog.
-                 You generate one iteration of an article once at a time.
-                 You never provide review comments.
-                 You are open to reviewer's comments and willing to iterate its article based on these comments.''',
-    goal="Write and iterate a decent blog post.",
+    backstory='You are a blog post writer who writes travel blogs.',
+    goal="Write blog posts and incorporate human feedback.",
     llm=llm,
-    callbacks=[MyCustomHandler("Writer")],
+    verbose=True
 )
 
 reviewer = Agent(
     role='Blog Post Reviewer',
-    backstory='''You are a professional article reviewer and very helpful for improving articles.
-                 You review articles and give change recommendations to make the article more aligned with user requests.
-                 You will give review comments upon reading entire article, so you will not generate anything when the article is not completely delivered. 
-                 You never generate blogs by itself.''',
-    goal="list builtins about what need to be improved of a specific blog post. Do not give comments on a summary or abstract of an article",
+    backstory='You are a professional article reviewer.',
+    goal="Review posts and get human approval on suggestions.",
     llm=llm,
-    callbacks=[MyCustomHandler("Reviewer")],
+    verbose=True
 )
 
 # Global variables for handling user input
