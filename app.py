@@ -6,11 +6,8 @@ from crewai.agents.crew_agent_executor import CrewAgentExecutor
 from typing import Any, Dict
 import threading
 import time
-from dotenv import load_dotenv
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 
-# Load environment variables
-load_dotenv()
 
 # Initialize Panel with material design
 pn.extension(design="material")
@@ -21,12 +18,15 @@ avatars = {
     "Reviewer": "https://cdn-icons-png.freepik.com/512/9408/9408201.png"
 }
 
-# Initialize LLM - Fix the model configuration
+
 llm = ChatOpenAI(
     model="ollama/tinyllama",  # Specify ollama as provider
     base_url="http://localhost:11434/v1",
     api_key="ollama"
 )
+
+# Add after LLM initialization
+print(f"LLM Configuration: {llm.__dict__}")
 
 # Custom callback handler for agents
 class MyCustomHandler(BaseCallbackHandler):
@@ -85,6 +85,9 @@ def StartCrew(prompt):
         process=Process.hierarchical
     )
 
+    # Add before task execution
+    print(f"Starting crew with topic: {prompt}")
+
     result = project_crew.kickoff()
     chat_interface.send("## Final Result\n"+result, user="assistant", respond=False)
 
@@ -96,6 +99,9 @@ def initiate_chat(message):
 def callback(contents: str, user: str, instance: pn.chat.ChatInterface):
     global initiate_chat_task_created
     global user_input
+
+    # Add in callback function
+    print(f"Callback received: {contents}")
 
     if not initiate_chat_task_created:
         thread = threading.Thread(target=initiate_chat, args=(contents,))
